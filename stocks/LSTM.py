@@ -27,7 +27,7 @@ class StockLSTM(nn.Module):
 class StockPredictor:
     def __init__(self):
         self.scaler = MinMaxScaler(feature_range=(-1, 1))
-        self.look_back = 50
+        self.look_back = 30
         self.input_dim = 1
         self.hidden_dim = 32
         self.num_layers = 2
