@@ -9,6 +9,14 @@ from bs4 import BeautifulSoup
 import locale
 from nltk.tokenize import sent_tokenize
 
+
+keywords_dict = {
+    "SBER":["СБЕР", "Сбербанк", "Сбер", "Сберколл", "Сбербизнес", "Сбертек", "Сбермаркет", "Мегамаркет", "Греф", "Сберколлектор", "Сбербизнес", "Сбертек", "Сбермаркет", "СберЛогистика", "СберЛизинг", "СберНедвижимость", "Сбербанк-АСТ", "Сбербанк-Резерв", "Сбербанк-Спасение", "Сбербанк-Страхование", "Сбербанк-Технологии", "Сбербанк-Эквайринг", "Сбербанк-Эксперт", "Сбербанк-Контактный Центр"],
+    "GAZP":["GAZP", "Газстройпром", "Газпром", "Газпромнефть", "Газпромбанк", "Газпроммедиа", "Газпромтранс", "Газпромдобыча", "Газпромэнерго", "Газпромавиа", "Газпроммежрегионгаз", "Газпроминвестходинг", "Газпромнедра", "Газпромпереработка", "Газпромпоставка", "Газпроммонтаж", "Газпромвнешэкономбанк", "Газпромснаб", "Газпромавтоматизация", "Газпромкомплектация", "Газпромгазораспределение", "Газпромэнергосбыт", "Газпромнефтегаз", "Газпромгазэнергосбыт", "Газпромкапитал", "Газпромстрой", "Газпромнефтьцентр", "Газпромтрансгаз", "Газпромбурение", "Газпромперевозка", "Газпромавтоматика"],
+    "LKOH":["LKOH", "Лукойл", "Лукойл-Нефтепродукт", "Лукойл-Гарант", "Лукойл-Инжиниринг", "Лукойл-Москва", "Лукойл-Пермь", "Лукойл-Уралнефтегаз", "Лукойл-Западная Сибирь", "Лукойл-Волгограднефтепродукт", "Лукойл-Калуга", "Лукойл-Трейд", "Лукойл-Нижегороднефтепродукт", "Лукойл-Югнефтепродукт", "Лукойл-Кубаньнефтепродукт", "Лукойл-Казахстан", "Лукойл-Азербайджан", "Лукойл-Украина", "Лукойл-Гео", "Лукойл-Газпром", "Лукойл-Технологии", "Лукойл-Центрнефтепродукт", "Лукойл-Волгограднефтехим", "Лукойл-Юг", "Лукойл-Информ", "Лукойл-Север", "Лукойл-Калининграднефтепродукт", "Лукойл-Центр", "Лукойл-Санкт-Петербург", "Лукойл-Северозапад", "Лукойл-Московиянефтепродукт", "Лукойл-Сургутнефтепродукт", "Лукойл-Холдинг", "Лукойл-Сибирь", "Лукойл-Энергосбыт"],
+    "MTSS": ["MTSS", "МТС", "Мобильные ТелеСистемы", "МТС-Банк", "MTS Money", "МТС-Медиа", "МТС-Телеком", "МТС-Украина", "МТС-Туркменистан", "МТС-Беларусь", "МТС-Армения", "МТС-Киргизия", "МТС-Узбекистан", "МТС-Индия", "МТС-Таджикистан", "МТС-Армения", "МТС-Казахстан", "МТС-Туркменистан", "МТС-Туркменистан", "МТС-Турция", "МТС-Грузия", "МТС-Киргизия", "МТС-Монтенегро", "МТС-Мьянма", "МТС-Сейшелы", "МТС-Шри-Ланка", "МТС-Гана", "МТС-Нигерия", "МТС-Иран", "МТС-Афганистан", "МТС-Пакистан", "МТС-Армения"]
+}
+
 class NewsParser:
     def __init__(self, url, keywords):
         self.__url = url
@@ -68,38 +76,44 @@ class NewsParser:
         self.__news = []
         try:
             while True:
-                show_more_button = WebDriverWait(self.__driver, 10).until(
-                    EC.presence_of_element_located((By.XPATH, "//span[@class='nlJ0' and contains(text(), 'Показать еще новости')]"))
-                )
+                try:
+                    show_more_button = WebDriverWait(self.__driver, 10).until(
+                        EC.presence_of_element_located((By.XPATH, "//span[@class='nlJ0' and contains(text(), 'Показать еще новости')]"))
+                    )
 
-                self.__driver.execute_script("arguments[0].click();", show_more_button)
-                time.sleep(2)
+                    self.__driver.execute_script("arguments[0].click();", show_more_button)
+                    # time.sleep(2)
 
-                updated_html = BeautifulSoup(self.__driver.page_source, 'html.parser')
-                news_blocks = updated_html.find_all("div", class_="TjB6 KSLV Ncpb E6j8")
+                    updated_html = BeautifulSoup(self.__driver.page_source, 'html.parser')
+                    news_blocks = updated_html.find_all("div", class_="TjB6 KSLV Ncpb E6j8")
 
-                show_more_button = WebDriverWait(self.__driver, 10).until(
-                    EC.presence_of_element_located((By.XPATH, "//span[@class='nlJ0' and contains(text(), 'Показать еще новости')]"))
-                )
+                    show_more_button = WebDriverWait(self.__driver, 10).until(
+                        EC.presence_of_element_located((By.XPATH, "//span[@class='nlJ0' and contains(text(), 'Показать еще новости')]"))
+                    )
 
-                if not show_more_button.is_displayed():
+                    if not show_more_button.is_displayed():
+                        break
+
+                    for news_block in news_blocks[len(self.__news):]:
+                        try:
+                            news_data = self.__parse_news(news_block)
+                            if(len(self.__news)>len_dataset or (news_data['date']<stop_date and bool(stop_date))):
+                                break
+                        except:
+                            pass
+                        # print(news_data['date'])
+                        self.__news.append(news_data)
+                        # print(bool(stop_date), len(self.__news),self.__news[-1]['date'])
+                        if(len(self.__news)%10 ==0):
+                            print("News parsed successfully:", len(self.__news))
+                    
+                    if(len(self.__news)>len_dataset or (news_data['date']<stop_date and bool(stop_date))):
+                                break
+                    if(len(self.__news)%100 == 0):
+                        self.save_to_csv('SBER_news_in_process.csv')
+                except:
+                    self.save_to_csv('SBER_news_in_crashed.csv')
                     break
-
-                for news_block in news_blocks[len(self.__news):]:
-                    try:
-                        news_data = self.__parse_news(news_block)
-                        if(len(self.__news)>len_dataset or (news_data['date']<stop_date and bool(stop_date))):
-                            break
-                    except:
-                        pass
-                    # print(news_data['date'])
-                    self.__news.append(news_data)
-                    # print(bool(stop_date), len(self.__news),self.__news[-1]['date'])
-                    if(len(self.__news)%10 ==0):
-                        print("News parsed successfully:", len(self.__news))
-                
-                if(len(self.__news)>len_dataset or (news_data['date']<stop_date and bool(stop_date))):
-                            break
                 
         finally:
             self.__driver.quit()
@@ -117,3 +131,10 @@ class NewsParser:
             df.to_csv(output_filename, index=False)
         else:
             print("Please run parse_news() first.")
+            
+            
+if __name__ == "__main__":
+    news_parser = NewsParser("https://bcs-express.ru/category/sberbank", keywords_dict['SBER'])
+
+    news_parser.parse_news(len_dataset = 1000000,stop_date='2018-01-01')
+    news_parser.save_to_csv('SBER_news.csv')

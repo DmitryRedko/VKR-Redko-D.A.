@@ -89,6 +89,9 @@ class StockPredictor:
         plt.ylabel('Stock Price')
         plt.legend()
         plt.show()
+    
+    def get_predictions_and_originals(self):
+        return self.predicted_values, self.y_test_original
 
 # Usage example:
 if __name__ == "__main__":
