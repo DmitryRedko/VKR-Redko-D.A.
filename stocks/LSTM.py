@@ -92,26 +92,3 @@ class StockPredictor:
     
     def get_predictions_and_originals(self):
         return self.predicted_values, self.y_test_original
-
-# Usage example:
-if __name__ == "__main__":
-    # Create an instance of StockPredictor
-    predictor = StockPredictor()
-
-    data = pd.read_csv("stocks/SBER.csv", sep=';')
-    need_data = data['<CLOSE>']  
-    window_size = 10
-    moving_average = need_data.rolling(window=window_size).mean()
-    moving_average.dropna(inplace=True)
-    
-    train_data, test_data = train_test_split(moving_average.values, test_size=0.1, shuffle=False)
-
-
-    # Load and train the model
-    predictor.load_data(train_data)
-    predictor.train_model()
-
-    # Predict and evaluate
-    predictor.predict( torch.from_numpy(test_data[:, :-1]))
-    predictor.calculate_rmse()
-    predictor.plot_results()

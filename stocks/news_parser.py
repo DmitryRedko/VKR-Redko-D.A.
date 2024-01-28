@@ -44,29 +44,43 @@ class NewsParser:
         return formatted_date
 
     def __parse_news(self, news_block):
-        date = news_block.find("time").text.strip()
-        title = news_block.find("a", class_="iKzE").text.strip()
-        href = news_block.find("a", class_="iKzE")["href"]
+        try:
+            date = news_block.find("time").text.strip()
+            title = news_block.find("a", class_="iKzE").text.strip()
+            href = news_block.find("a", class_="iKzE")["href"]
 
-        self.__driver.execute_script(f"window.open('{href}', '_blank');")
-        self.__driver.switch_to.window(self.__driver.window_handles[1])
+            self.__driver.execute_script(f"window.open('{href}', '_blank');")
+            self.__driver.switch_to.window(self.__driver.window_handles[1])
 
-        content_html = BeautifulSoup(self.__driver.page_source, 'html.parser')
-        content = content_html.find("div", class_="YjHz UBOr RkGZ").text.strip()
+            content_html = BeautifulSoup(self.__driver.page_source, 'html.parser')
+            content = content_html.find("div", class_="YjHz UBOr RkGZ").text.strip()
 
-        self.__driver.close()
-        self.__driver.switch_to.window(self.__driver.window_handles[0])
+            self.__driver.close()
+            self.__driver.switch_to.window(self.__driver.window_handles[0])
 
-        # print(date, end=" ************** ")
-        formatted_date = self.__format_date(date)
-        # print(formatted_date)
+            # print(date, end=" ************** ")
+            formatted_date = self.__format_date(date)
+            # print(formatted_date)
+            return {
+                'date': formatted_date,
+                'title': title,
+                'content': content,
+                'filtered_content': self.__extract_sentences(content)
+            }
+        except:
+            self.__driver.close()
+            self.__driver.switch_to.window(self.__driver.window_handles[0])
+
+            formatted_date = None
+            title = None
+            content = None
+            return {
+                'date': formatted_date,
+                'title': title,
+                'content': content,
+                'filtered_content': content
+            }
         
-        return {
-            'date': formatted_date,
-            'title': title,
-            'content': content,
-            'filtered_content': self.__extract_sentences(content)
-        }
 
 
     def parse_news(self, len_dataset=500, stop_date = None):
@@ -110,9 +124,9 @@ class NewsParser:
                     if(len(self.__news)>len_dataset or (news_data['date']<stop_date and bool(stop_date))):
                                 break
                     if(len(self.__news)%100 == 0):
-                        self.save_to_csv('SBER_news_in_process.csv')
+                        self.save_to_csv('MTSS_news_in_process.csv')
                 except:
-                    self.save_to_csv('SBER_news_in_crashed.csv')
+                    self.save_to_csv('MTSS_news_in_crashed.csv')
                     break
                 
         finally:
@@ -134,7 +148,7 @@ class NewsParser:
             
             
 if __name__ == "__main__":
-    news_parser = NewsParser("https://bcs-express.ru/category/sberbank", keywords_dict['SBER'])
+    news_parser = NewsParser("https://bcs-express.ru/category/mtss", keywords_dict['MTSS'])
 
     news_parser.parse_news(len_dataset = 1000000,stop_date='2018-01-01')
-    news_parser.save_to_csv('SBER_news.csv')
+    news_parser.save_to_csv('MTSS_news.csv')
