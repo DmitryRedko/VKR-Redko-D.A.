@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Моя веб-страница</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='icon.jpg') }}">
+</head>
+<body>
+    <header>
+        <h1>Добро пожаловать на мою страницу! {{ current_date }}</h1>
+    </header>
+    <nav>
+        <ul>
+            <li><a href="{{ url_for('home') }}">Главная</a></li>
+            <li><a href="{{ url_for('portfolio') }}">Портфель</a></li>
+            <li><a href="#">Прогноз</a></li>
+            <li><a href="#">Лидеры роста и падения</a></li>
+            <li><a href="#">События и рынки</a></li>
+            <li><a href="{{ url_for('logout') }}">Выйти</a></li>
+        </ul>
+    </nav>
+    <main>
+        <section>
+            <h2>Стоимость портфеля - Баланс: 520,97€ </h2>
+            <h2>Прогнозная стоимость портфеля - Баланс: 520,97€ </h2>
+        </section>
+        <section class="leaders">
+            <div class="table-container">
+                <table class="leaders-table">
+                    <caption>Лидеры роста</caption>
+                    <thead>
+                        <tr>
+                            <th>Тикер</th>
+                            <th>Старая цена</th>
+                            <th>Новая цена</th>
+                            <th>Прирост</th>
+                            <th>Процент</th>
+                        
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ticker, old, new, increment, percent in leaders_of_growth %}
+                        <tr>
+                            <td><b>{{ ticker }}</b></td>
+                            <td><b>{{ old }}</b></td>
+                            <td><b>{{ new }}</b></td>
+                            <td class="growth">{{ '{:.2f}'.format(increment) }} ₽</td>
+                            <td class="growth">{{ '{:.2f}'.format(percent) }}%</td>
+                    
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-container">
+                <table class="leaders-table">
+                    <caption>Лидеры падения</caption>
+                    <thead>
+                        <tr>
+                            <th>Тикер</th>
+                            <th>Старая цена</th>
+                            <th>Новая цена</th>
+                            <th>Прирост</th>
+                            <th>Процент</th>
+                            
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ticker,old, new, decrement, percent in leaders_of_fall %}
+                        <tr>
+                            <td><b>{{ ticker }}</b></td>
+                            <td><b>{{ old }}</b></td>
+                            <td><b>{{ new }}</b></td>
+                            <td class="fall">{{ '{:.2f}'.format(decrement) }} ₽</td>
+                            <td class="fall">{{ '{:.2f}'.format(percent) }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        <section>
+            <h2>Последние новости</h2>
+            <div id="news-list">
+                {% for ticker, date, title, news_content, filtred_content in last_news %}
+                <div class="news-item">
+                    <div>{{ date }} - {{ ticker }} - {{ title }}</div>
+                    <div class="news-content">{{ news_content }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </main>
+    <footer>
+        <p>© 2024 Моя веб-страница</p>
+    </footer>
+    <script>
+        const currentDateElement = document.getElementById('currentDate');
+        const currentDate = new Date();
+        const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
+        currentDateElement.textContent = currentDate.toLocaleDateString('en-US', options).replace(/\//g, '.');
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const newsItems = document.querySelectorAll('.news-item');
+    
+            newsItems.forEach(function(item) {
+                item.addEventListener('click', function() {
+                    const content = this.querySelector('.news-content');
+                    content.style.display = content.style.display === 'block' ? 'none' : 'block';
+                });
+            });
+        });
+    </script>
+    
+</body>
+</html>
