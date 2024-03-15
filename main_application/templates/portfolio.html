@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мой портфель</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <link rel="shortcut icon" href="{{ url_for('static', filename='icon.jpg') }}">
+    <script src="{{ url_for('static', filename='portfolio_scripts.js') }}"></script>
 </head>
 <body>
-    <header>
-        <h1>Мой портфель</h1>
+    <header style="display: flex; justify-content: space-between; align-items: center;">
+        <h1 style="margin: auto;">{{ current_date }}</h1>
+        <h1 style="margin: auto;">Пользователь: {{ user }}</h1>
     </header>
     <nav>
         <ul>
@@ -21,19 +22,84 @@
         </ul>
     </nav>
     <main>
-        <section>
-            <h2>Состояние портфеля</h2>
-            <p>Текущий баланс: 520,97€</p>
-            <p>Прогнозируемый баланс: 520,97€</p>
-            <!-- Добавьте здесь дополнительную информацию о портфеле -->
-        </section>
-        <!-- Добавьте здесь другие разделы и информацию о портфеле, если нужно -->
+    
+    <section id="portfolio-section">
+        <h2>Мой портфель</h2>
+        <ul id="portfolio-list">
+            
+        </ul>
+    </section>
+    
+    <section id="add-portfolio-section" hidden:true>
+        <h2>Сформировать портфель</h2>
+        <form id="add-portfolio-form" action="{{ url_for('portfolio') }}" method="post" onsubmit="collectTickers()">
+
+            <table id="stocks-table">
+                <thead>
+                    <tr>
+                        <th>Тикер</th>
+                        <th>Количество</th>
+                        <th>Цена покупки</th>
+                        <th>Дата покупки</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="stocks-table-body">
+                    
+                    <tr>
+                        <td>
+                            <select name="ticker" required onchange="handleTickerChange(this)">
+                                <option value="" disabled selected hidden>Выберите тикер</option>
+                                {% for ticker in tickers %}
+                                    <option value="{{ ticker }}">{{ ticker }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td><input type="number" name="quantity" min="1"  required disabled oninput="updateTotal(this)"></td>
+                        <td>
+                            <div class="purchase-price-div" name="purchase-price"></div>
+                        </td>
+                        <td><input type="hidden" name="purchase-date" value="{{current_date}}">{{ current_date }}</td>
+                        <td><button type="button" onclick="removeStockRow(this)">Удалить</button></td>
+                    </tr>
+                </tbody>
+            </table>
+            <button type="button" onclick="addStockRow()">Добавить ценную бумагу</button>
+            <button type="submit" name="save_portfolio">Сформировать портфель</button>
+
+        </form>
+    </section>
+
     </main>
     <footer>
         <p>© 2024 Моя веб-страница</p>
     </footer>
+
     <script>
-        // Добавьте здесь скрипты, если нужно
+        function addStockRow() {
+            var tableBody = document.getElementById("stocks-table-body");
+            var newRow = tableBody.insertRow();
+            newRow.innerHTML = `
+                <tr>
+                    <td>
+                        <select name="ticker" required onchange="handleTickerChange(this)">
+                            <option value="" disabled selected hidden>Выберите тикер</option>
+                            {% for ticker in tickers %}
+                                <option value="{{ ticker }}">{{ ticker }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td><input type="number" name="quantity" min="1"  required disabled oninput="updateTotal(this)"></td>
+                    <td>
+                        <div class="purchase-price-div" name="purchase-price"></div>
+                        <input type="hidden" name="purchase_price" value="">
+                    </td>
+                    <td><input type="hidden" name="purchase-date" value="{{current_date}}">{{ current_date }}</td>
+                    <td><button type="button" onclick="removeStockRow(this)">Удалить</button></td>
+                </tr>
+            `;
+            disableSelectedTickers();
+        }
     </script>
 </body>
 </html>

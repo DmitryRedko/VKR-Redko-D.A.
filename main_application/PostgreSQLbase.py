@@ -69,7 +69,7 @@ class PostgreSQLbase:
     def load_stocks_from_file(self, file_path):
         # Определяем тип файла и читаем данные
         if file_path.endswith('.csv'):
-            df = pd.read_csv(file_path, sep=";")
+            df = pd.read_csv(file_path)
         elif file_path.endswith('.xls') or file_path.endswith('.xlsx'):
             df = pd.read_excel(file_path)
         elif file_path.endswith('.txt'):
@@ -78,7 +78,7 @@ class PostgreSQLbase:
             raise ValueError("Unsupported file type")
 
         # Подготавливаем данные для вставки в базу
-        df['date'] = pd.to_datetime(df['date'], format='%y%m%d').dt.date
+        df['date'] = pd.to_datetime(df['date'], format='%d.%m.%Y').dt.date
         data = df.values.tolist()  # Изменено для получения списка списков
         columns = ','.join(df.columns)
 
@@ -140,7 +140,7 @@ class PostgreSQLbase:
         self.conn.commit()
     
     def get_ticker_quotes_by_date(self, ticker, date):
-        return self.get_ticker_quotes_between_dates(ticker,date,date)
+        return self.get_ticker_quotes_between_dates(ticker,date,date)[0]
 
     def get_latest_price_before_date(self, ticker, target_date):
         query = sql.SQL("""
@@ -162,7 +162,7 @@ class PostgreSQLbase:
         """)
         self.cursor.execute(query, (ticker, target_date))
         rows = self.cursor.fetchall()
-        return self.__convert_to_normal_stocks(rows)
+        return self.__convert_to_normal_stocks(rows)[0]
 
     def get_limit_prices_before_date(self, ticker, target_date, limit=10):
         query = sql.SQL("""
@@ -258,7 +258,48 @@ class PostgreSQLbase:
         rows = self.cursor.fetchall()
         return self.__convert_to_normal_news(rows)
 
+    def add_portfolio(self, username, portfolio_data):
+        query = """
+            INSERT INTO stocks_app.portfolio (username, portfolio_data)
+            VALUES (%s, %s)
+            ON CONFLICT (username) DO UPDATE
+            SET portfolio_data = %s
+            RETURNING id
+        """
+        self.cursor.execute(query, (username, portfolio_data, portfolio_data))
+        self.conn.commit()
+        return self.cursor.fetchone()[0] 
 
+    def update_portfolio(self, username, new_portfolio_data):
+        query = """
+            UPDATE stocks_app.portfolio
+            SET portfolio_data = %s
+            WHERE username = %s
+        """
+        self.cursor.execute(query, (new_portfolio_data, username))
+        self.conn.commit()
+
+    def delete_portfolio(self, username):
+        query = """
+            DELETE FROM stocks_app.portfolio
+            WHERE username = %s
+        """
+        self.cursor.execute(query, (username,))
+        self.conn.commit()
+
+    def get_portfolio(self, username):
+        query = """
+            SELECT portfolio_data
+            FROM stocks_app.portfolio
+            WHERE username = %s
+        """
+        self.cursor.execute(query, (username,))
+        portfolio_data = self.cursor.fetchone()
+        if portfolio_data:
+            return portfolio_data[0]
+        return None
+    
+    
     def close(self):
         self.cursor.close()
         self.conn.close()        
@@ -274,8 +315,10 @@ class PostgreSQLbase:
         if user:
             return True
         return False
+    
+    
 
 if __name__ == "__main__":
     db = PostgreSQLbase(db_settings['dbname'], db_settings['user'], db_settings['password'], db_settings['host'])
-    print(db.get_news_by_ticker_between_dates('SBER', '2020-01-01','2020-02-01'))
+    db.load_stocks_from_file('./GAZP_filtred.csv')
     

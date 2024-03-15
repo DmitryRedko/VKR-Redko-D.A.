@@ -14,14 +14,14 @@ class LeadsOfGrowthAndFalls:
             # Получаем данные за предыдущий день
             yesterday_data = self.db.get_latest_price_before_date(ticker, date)
             if yesterday_data:
-                yesterday_close_price = yesterday_data[0][5]  # Получаем цену закрытия за предыдущий день
+                yesterday_close_price = yesterday_data[5]  # Получаем цену закрытия за предыдущий день
             else:
                 yesterday_close_price = None
             
             # Получаем данные за сегодняшний день
             today_data = self.db.get_ticker_quotes_by_date(ticker, date)
             if today_data:
-                today_close_price = today_data[0][5]  # Получаем цену закрытия за сегодняшний день
+                today_close_price = today_data[5]  # Получаем цену закрытия за сегодняшний день
             else:
                 today_close_price = None
             

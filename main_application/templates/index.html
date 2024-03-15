@@ -8,9 +8,12 @@
     <link rel="shortcut icon" href="{{ url_for('static', filename='icon.jpg') }}">
 </head>
 <body>
-    <header>
-        <h1>Добро пожаловать на мою страницу! {{ current_date }}</h1>
-    </header>
+<header style="display: flex; justify-content: space-between; align-items: center;">
+    <h1 style="margin: auto;">{{ current_date }}</h1>
+
+    <h1 style="margin: auto;">Пользователь: {{ user }}</h1>
+</header>
+
     <nav>
         <ul>
             <li><a href="{{ url_for('home') }}">Главная</a></li>
@@ -22,10 +25,6 @@
         </ul>
     </nav>
     <main>
-        <section>
-            <h2>Стоимость портфеля - Баланс: 520,97€ </h2>
-            <h2>Прогнозная стоимость портфеля - Баланс: 520,97€ </h2>
-        </section>
         <section class="leaders">
             <div class="table-container">
                 <table class="leaders-table">
@@ -114,6 +113,6 @@
             });
         });
     </script>
-    
+
 </body>
 </html>

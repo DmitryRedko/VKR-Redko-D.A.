@@ -167,3 +167,72 @@ footer {
     background-color: #f9f9f9;
     border: 1px solid #ccc;
 }
+
+/* Стили для таблицы котировок */
+#stocks-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+#stocks-table th,
+#stocks-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+#stocks-table th {
+    background-color: #f2f2f2;
+}
+
+/* Стили для кнопок в таблице котировок */
+#stocks-table button {
+    padding: 5px 10px;
+    cursor: pointer;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    transition: background-color 0.3s;
+}
+
+#stocks-table button:hover {
+    background-color: #0056b3;
+}
+
+/* Стили для ввода данных в таблице котировок */
+#stocks-table input,
+#stocks-table select {
+    padding: 5px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Стили для даты в таблице котировок */
+#stocks-table input[type="text"][readonly] {
+    background-color: #f2f2f2;
+    cursor: not-allowed;
+}
+
+.saveportfoliobutton button:hover {
+    background-color: #0056b3;
+}
+
+.addrowbutton button:hover {
+    background-color: #0056b3;
+}
+
+button {
+    padding: 10px 20px;
+    background-color:  #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+button:hover {
+    background-color:  #0056b3;
+}
