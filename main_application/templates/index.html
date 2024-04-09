@@ -19,8 +19,6 @@
             <li><a href="{{ url_for('home') }}">Главная</a></li>
             <li><a href="{{ url_for('portfolio') }}">Портфель</a></li>
             <li><a href="#">Прогноз</a></li>
-            <li><a href="#">Лидеры роста и падения</a></li>
-            <li><a href="#">События и рынки</a></li>
             <li><a href="{{ url_for('logout') }}">Выйти</a></li>
         </ul>
     </nav>
@@ -36,18 +34,19 @@
                             <th>Новая цена</th>
                             <th>Прирост</th>
                             <th>Процент</th>
+                            <th>Новостной фон</th>
                         
                         </tr>
                     </thead>
                     <tbody>
-                        {% for ticker, old, new, increment, percent in leaders_of_growth %}
+                        {% for ticker, old, new, increment, percent, sentiment in leaders_of_growth %}
                         <tr>
                             <td><b>{{ ticker }}</b></td>
                             <td><b>{{ old }}</b></td>
                             <td><b>{{ new }}</b></td>
                             <td class="growth">{{ '{:.2f}'.format(increment) }} ₽</td>
                             <td class="growth">{{ '{:.2f}'.format(percent) }}%</td>
-                    
+                            <td style="color: {{ 'green' if sentiment > 0 else ('red' if sentiment < 0 else 'black') }};"><b>{{ sentiment }}</b></td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -63,17 +62,19 @@
                             <th>Новая цена</th>
                             <th>Прирост</th>
                             <th>Процент</th>
+                            <th>Новостной фон</th>
                             
                         </tr>
                     </thead>
                     <tbody>
-                        {% for ticker,old, new, decrement, percent in leaders_of_fall %}
+                        {% for ticker,old, new, decrement, percent, sentiment in leaders_of_fall %}
                         <tr>
                             <td><b>{{ ticker }}</b></td>
                             <td><b>{{ old }}</b></td>
                             <td><b>{{ new }}</b></td>
                             <td class="fall">{{ '{:.2f}'.format(decrement) }} ₽</td>
                             <td class="fall">{{ '{:.2f}'.format(percent) }}%</td>
+                            <td style="color: {{ 'green' if sentiment > 0 else ('red' if sentiment < 0 else 'black') }};"><b>{{ sentiment }}</b></td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -83,11 +84,18 @@
         <section>
             <h2>Последние новости</h2>
             <div id="news-list">
-                {% for ticker, date, title, news_content, filtred_content in last_news %}
+                {% for ticker, date, title, content, news_content, filtred_content, positive, negative,real_score in last_news %}
                 <div class="news-item">
-                    <div>{{ date }} - {{ ticker }} - {{ title }}</div>
+                    <div>
+                        <div class="real-score-box" style="background-color: {{ 'green' if real_score > 0 else ('red' if real_score < 0 else 'lightgray') }};">
+                            {{ real_score|round(2) }}
+                        </div>
+                        <b>{{ date }} - {{ ticker }}:</b> 
+                        {{ title }}
+                    </div>
                     <div class="news-content">{{ news_content }}</div>
                 </div>
+                
                 {% endfor %}
             </div>
         </section>

@@ -168,26 +168,40 @@ footer {
     border: 1px solid #ccc;
 }
 
-/* Стили для таблицы котировок */
-#stocks-table {
+.real-score-box {
+    display: inline-block;
+    width: 40px; /* Ширина квадратика */
+    height: 20px; /* Высота квадратика */
+    margin-right: 5px; /* Расстояние между квадратиком и текстом */
+    text-align: center;
+    line-height: 20px; /* Центрирование текста внутри квадратика */
+    font-weight: bold; /* Жирный шрифт для текста внутри квадратика */
+    color: white; /* Цвет текста внутри квадратика */
+    border-radius: 3px; /* Скругление углов квадратика */
+}
+
+.news-item:hover {
+    background-color: #b3d9ff; /* Светло-голубой при наведении */
+}
+
+#add-stocks-table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 20px;
 }
 
-#stocks-table th,
-#stocks-table td {
+#add-stocks-table th,
+#add-stocks-table td {
     border: 1px solid #ddd;
     padding: 8px;
     text-align: left;
 }
 
-#stocks-table th {
+#add-stocks-table th {
     background-color: #f2f2f2;
 }
 
-/* Стили для кнопок в таблице котировок */
-#stocks-table button {
+#add-stocks-table button {
     padding: 5px 10px;
     cursor: pointer;
     background-color: #007bff;
@@ -197,20 +211,18 @@ footer {
     transition: background-color 0.3s;
 }
 
-#stocks-table button:hover {
+#add-stocks-table button:hover {
     background-color: #0056b3;
 }
 
-/* Стили для ввода данных в таблице котировок */
-#stocks-table input,
-#stocks-table select {
+#add-stocks-table input,
+#add-stocks-table select {
     padding: 5px;
     width: 100%;
     box-sizing: border-box;
 }
 
-/* Стили для даты в таблице котировок */
-#stocks-table input[type="text"][readonly] {
+#add-stocks-table input[type="text"][readonly] {
     background-color: #f2f2f2;
     cursor: not-allowed;
 }
@@ -235,4 +247,97 @@ button {
 
 button:hover {
     background-color:  #0056b3;
+}
+
+
+#change-stocks-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+#change-stocks-table th,
+#change-stocks-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+#change-stocks-table th {
+    background-color: #f2f2f2;
+}
+
+#change-stocks-table button {
+    padding: 5px 10px;
+    cursor: pointer;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    transition: background-color 0.3s;
+}
+
+#change-stocks-table button:hover {
+    background-color: #0056b3;
+}
+
+#change-stocks-table input,
+#change-stocks-table select {
+    padding: 5px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#change-stocks-table input[type="text"][readonly] {
+    background-color: #f2f2f2;
+    cursor: not-allowed;
+}
+
+
+#my-stocks-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+#my-stocks-table th,
+#my-stocks-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+#my-stocks-table th {
+    background-color: #f2f2f2;
+}
+
+#my-stocks-table button {
+    padding: 5px 10px;
+    cursor: pointer;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    transition: background-color 0.3s;
+}
+
+#my-stocks-table button:hover {
+    background-color: #0056b3;
+}
+
+#my-stocks-table input,
+#my-stocks-table select {
+    padding: 5px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#my-stocks-table input[type="text"][readonly] {
+    background-color: #f2f2f2;
+    cursor: not-allowed;
+}
+
+
+.bold-text {
+    font-weight: bold;
 }

@@ -1,105 +1,269 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <link rel="shortcut icon" href="{{ url_for('static', filename='icon.jpg') }}">
-    <script src="{{ url_for('static', filename='portfolio_scripts.js') }}"></script>
+    <script src="{{ url_for('static', filename='add_portfolio_scripts.js') }}"></script>
+    <script src="{{ url_for('static', filename='change_portfolio_scripts.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
 </head>
+
 <body>
     <header style="display: flex; justify-content: space-between; align-items: center;">
         <h1 style="margin: auto;">{{ current_date }}</h1>
         <h1 style="margin: auto;">Пользователь: {{ user }}</h1>
     </header>
+
     <nav>
         <ul>
             <li><a href="{{ url_for('home') }}">Главная</a></li>
             <li><a href="{{ url_for('portfolio') }}">Портфель</a></li>
             <li><a href="#">Прогноз</a></li>
-            <li><a href="#">Лидеры роста и падения</a></li>
-            <li><a href="#">События и рынки</a></li>
+            <li><a href="{{ url_for('logout') }}">Выйти</a></li>
         </ul>
     </nav>
+
     <main>
     
-    <section id="portfolio-section">
+    <section>
         <h2>Мой портфель</h2>
-        <ul id="portfolio-list">
-            
-        </ul>
+        <canvas id="myChart" width="200" height="50"></canvas>
+        <table id="my-stocks-table" >
+            <thead>
+                <tr>
+                    <th>Дата покупки</th>
+                    <th>Тикер</th>
+                    <th>Текущий новостной фон</th>
+                    <th>Количество</th>
+                    <th>Цена покупки</th>
+                    <th>Текущая цена актива</th>
+                    <th>Общая стоимость</th>
+                    <th>Процент в портфеле</th>
+                </tr>
+            </thead>
+            <tbody id="my-stocks-table-body">
+                {% for row in portfolio_mass%}
+                    <tr>
+                        <td>{{row.purchase_date}}</td>
+                        <td>{{row.ticker}}</td>
+                        <td style="color: {{ 'green' if row.sentiment > 0 else ('red' if row.sentiment < 0 else 'black') }};"><b>{{ row.sentiment }}   -   {{ row.recomendation }} </b></td>
+                        <td>{{row.quantity}}</td>
+                        <td>{{row.purchase_price}}</td>
+                        <td>{{row.current_price}}</td>
+                        <td>{{row.total_cost}}</td>
+                        <td>{{row.persent}}%</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <h3><b><p>Суммарная стоимость портфеля: {{total_portfolio_value}}</p></b></h3>
     </section>
     
-    <section id="add-portfolio-section" hidden:true>
-        <h2>Сформировать портфель</h2>
-        <form id="add-portfolio-form" action="{{ url_for('portfolio') }}" method="post" onsubmit="collectTickers()">
-
-            <table id="stocks-table">
+    <section id="change-portfolio-section">
+        <h2 onclick="togglePortfolioSection()" onmouseover="this.style.cursor='pointer'" onmouseleave="this.style.cursor='default'">Изменить портфель</h2>
+        <form id="change-portfolio-form" action="{{ url_for('portfolio') }}" method="post" hidden>
+            <div hidden>{{ current_date }}</div>
+            <table id="change-stocks-table">
                 <thead>
                     <tr>
+                        <th>Дата покупки</th>
                         <th>Тикер</th>
                         <th>Количество</th>
                         <th>Цена покупки</th>
-                        <th>Дата покупки</th>
-                        <th>Действия</th>
+                        <th>Общая стоимость</th>
+                        <th>Процент в портфеле</th>
+                        <th>Текущая цена актива</th>
+                        <th>Новое количество</th>
+                        <th>Итоговая цена актива</th>
+                        <th>Итоговая общая стоимость</th>
+                        <th>Итоговый процент в портфеле</th>
+                        <th></th>
                     </tr>
                 </thead>
-                <tbody id="stocks-table-body">
-                    
+                <tbody id="change-stocks-table-body">
+                    {% for row in portfolio_mass%}
+                        <tr>
+                            <td><div name="old-purchase-date">{{row.purchase_date}}</div></td>
+                            <td><div name="ticker">{{row.ticker}}</div></td>
+                            <td><div name="old-quantity">{{row.quantity}}</div></td>
+                            <td><div name="old-purchase-price">{{row.purchase_price}}</div></td>
+                            <td><div name="old-total-cost">{{row.total_cost}}</div></td>
+                            <td><div name="old-persent">{{row.persent}}%</div></td>
+                            <td><div name="current_price">{{row.current_price}}</td>
+                            <td><input type="number" name="new-quantity" min="1" value="{{row.quantity}}" oninput="changeUpdateTotal(this)">     </td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td><button type="button" onclick="changeRemoveStockRow(this)">Полностью продать актив</button></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <button type="button" onclick="changeStockRow()">Добавить ценную бумагу</button>
+            <button type="submit" name="change_save_portfolio" onclick="return prepareFormData()">Сформировать портфель</button>
+            <button onclick="refreshPage()">Сбросить изменения</button>
+
+
+        </form>
+    </section>
+
+
+    <section id="add-portfolio-section" {{create_portfolio_status}}>
+        <h2>Сформировать портфель</h2>
+        <form id="add-portfolio-form" action="{{ url_for('portfolio') }}" method="post" onsubmit="addCollectTickers()">
+
+            <table id="add-stocks-table">
+                <thead>
                     <tr>
+                        <th>Дата покупки</th>
+                        <th>Тикер</th>
+                        <th>Количество</th>
+                        <th>Цена актива</th>
+                        <th>Общая цена</th>
+                        <th>Новостной фон</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="add-stocks-table-body">
+                    <tr>
+                        <td><input type="hidden" name="purchase-date" value="{{current_date}}">{{ current_date }}</td>
                         <td>
-                            <select name="ticker" required onchange="handleTickerChange(this)">
+                            <select name="ticker" required onchange="addHandleTickerChange(this)">
                                 <option value="" disabled selected hidden>Выберите тикер</option>
                                 {% for ticker in tickers %}
                                     <option value="{{ ticker }}">{{ ticker }}</option>
                                 {% endfor %}
                             </select>
                         </td>
-                        <td><input type="number" name="quantity" min="1"  required disabled oninput="updateTotal(this)"></td>
+                        <td><input type="number" name="quantity" min="1"  required disabled oninput="addUpdateTotal(this)"></td>
+                        <td>
+                            <div class="asset-price-div" name="asset-price"></div>
+                        </td>                        
                         <td>
                             <div class="purchase-price-div" name="purchase-price"></div>
                         </td>
-                        <td><input type="hidden" name="purchase-date" value="{{current_date}}">{{ current_date }}</td>
-                        <td><button type="button" onclick="removeStockRow(this)">Удалить</button></td>
+                        <td>
+                            <div class="sentiment-div" name="sentiment"></div>
+                        </td>
+                        <td><button type="button" onclick="addRemoveStockRow(this)">Удалить строку</button></td>
                     </tr>
                 </tbody>
             </table>
             <button type="button" onclick="addStockRow()">Добавить ценную бумагу</button>
-            <button type="submit" name="save_portfolio">Сформировать портфель</button>
-
+            <button type="submit" name="add_save_portfolio">Сформировать портфель</button>
         </form>
     </section>
 
     </main>
-    <footer>
-        <p>© 2024 Моя веб-страница</p>
-    </footer>
+
+        
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
         function addStockRow() {
-            var tableBody = document.getElementById("stocks-table-body");
+            var tableBody = document.getElementById("add-stocks-table-body");
+            var newRow = tableBody.insertRow();
+            newRow.innerHTML = `
+            <tr>
+                <td><input type="hidden" name="purchase-date" value="{{current_date}}">{{ current_date }}</td>
+                <td>
+                    <select name="ticker" required onchange="addHandleTickerChange(this)">
+                        <option value="" disabled selected hidden>Выберите тикер</option>
+                        {% for ticker in tickers %}
+                            <option value="{{ ticker }}">{{ ticker }}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+                <td><input type="number" name="quantity" min="1"  required disabled oninput="addUpdateTotal(this)"></td>
+                <td>
+                    <div class="asset-price-div" name="asset-price"></div>
+                </td>                        
+                <td>
+                    <div class="purchase-price-div" name="purchase-price"></div>
+                </td>
+                <td><button type="button" onclick="addRemoveStockRow(this)">Удалить строку</button></td>
+            </tr>
+            `;
+            addDisableSelectedTickers();
+        }
+
+
+        function changeStockRow() {
+            var tableBody = document.getElementById("change-stocks-table-body");
             var newRow = tableBody.insertRow();
             newRow.innerHTML = `
                 <tr>
-                    <td>
-                        <select name="ticker" required onchange="handleTickerChange(this)">
-                            <option value="" disabled selected hidden>Выберите тикер</option>
-                            {% for ticker in tickers %}
-                                <option value="{{ ticker }}">{{ ticker }}</option>
-                            {% endfor %}
-                        </select>
-                    </td>
-                    <td><input type="number" name="quantity" min="1"  required disabled oninput="updateTotal(this)"></td>
-                    <td>
-                        <div class="purchase-price-div" name="purchase-price"></div>
-                        <input type="hidden" name="purchase_price" value="">
-                    </td>
                     <td><input type="hidden" name="purchase-date" value="{{current_date}}">{{ current_date }}</td>
-                    <td><button type="button" onclick="removeStockRow(this)">Удалить</button></td>
+                <td colspan="4">
+                    <select name="ticker" required onchange="changeHandleTickerChange(this)">
+                        <option value="" disabled selected hidden>Выберите тикер</option>
+                        {% for ticker in tickers %}
+                            <option value="{{ ticker }}">{{ ticker }}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+                <td colspan="2"><input type="number" name="quantity" min="1"  required disabled oninput="changeUpdateTotalNew(this)"></td>
+                <td colspan="2">
+                    <div class="asset-price-div" name="asset-price"></div>
+                </td>                        
+                <td colspan="2">
+                    <div class="purchase-price-div" name="purchase-price"></div>
+                </td>
+                <td><button type="button" onclick="changeRemoveStockRow(this)">Удалить строку</button></td>
                 </tr>
             `;
-            disableSelectedTickers();
+            changeDisableSelectedTickers();
         }
     </script>
+    
+    <script>
+        function togglePortfolioSection() {
+            var section = document.getElementById('change-portfolio-section');
+            var form = document.getElementById('change-portfolio-form');
+            
+            if (form.hasAttribute('hidden')) {
+                form.removeAttribute('hidden');
+            } else {
+                form.setAttribute('hidden', 'true');
+            }
+        }
+        
+        var ctx = document.getElementById('myChart').getContext('2d');
+
+        var myChart = new Chart(ctx, {
+          type: 'line', 
+          data: {
+            labels: {{graph_dates | tojson | safe }}, 
+            datasets: [{
+              label: 'Стоимость сформированного портфеля', 
+              data: {{graph_purchase_portfolio_data | tojson | safe }}, 
+              borderColor: 'rgba(255, 99, 132, 1)', 
+              borderWidth: 1, 
+              fill: false 
+            },
+            {
+              label: 'Текущая цена портфеля', 
+              data: {{graph_dynamic_portfolio_data | tojson | safe }}, 
+              borderColor: 'rgba(54, 162, 235, 1)', 
+              borderWidth: 1, 
+              fill: false
+            }]
+          },
+          options: {
+            scales: {
+              yAxes: [{
+                ticks: {
+                  beginAtZero: true 
+                }
+              }]
+            }
+          }
+        });
+      </script>
+    
 </body>
 </html>
