@@ -4,7 +4,15 @@ from psycopg2 import sql
 from psycopg2.extras import execute_values
 from datetime import datetime
 from config import db_settings
+import pickle
 import re
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+import tensorflow as tf
+tf.get_logger().setLevel('ERROR')
+import warnings
+warnings.filterwarnings("ignore")
+
 
 class PostgreSQLbase:
     def __init__(self, dbname, user, password, host):
@@ -191,6 +199,28 @@ class PostgreSQLbase:
         self.cursor.execute(query, (ticker, target_date, limit))
         rows = self.cursor.fetchall()
         return self.__convert_to_normal_stocks(rows)
+    
+    def get_limit_prices_before_date_with_date(self, ticker, target_date, limit=10):
+        query = sql.SQL("""
+            SELECT
+                ticker,
+                date,
+                open_price,
+                high_price,
+                low_price,
+                close_price,
+                volume
+            FROM
+                stocks_app.stock_quotes
+            WHERE
+                ticker = %s
+                AND date <= %s
+            ORDER BY date DESC
+            LIMIT %s
+        """)
+        self.cursor.execute(query, (ticker, target_date, limit))
+        rows = self.cursor.fetchall()
+        return self.__convert_to_normal_stocks(rows)
 
     def get_news_by_ticker(self, ticker):
         query = sql.SQL("""
@@ -355,9 +385,146 @@ class PostgreSQLbase:
             return True
         return False
     
+    def get_data_for_predictions(self, date, filter_flag = 1):
+        columns = ['ticker', 'date', 'close_price', 'volume', 'price_change', 'real_score']
+
+        query = """
+            SELECT 
+                sq.ticker,
+                sq.date,
+                sq.close_price,
+                sq.volume,
+                ROUND(sq.close_price - LAG(sq.close_price) OVER (PARTITION BY sq.ticker ORDER BY sq.date),2) AS price_change,
+                sn.real_score AS real_score
+            FROM 
+                stocks_app.stock_quotes sq
+            LEFT JOIN (
+                SELECT 
+                    * 
+                FROM 
+                    stocks_app.stock_news
+            ) sn ON 
+                sq.ticker = sn.ticker 
+                AND sq.date = sn.date
+            WHERE
+                sq.ticker = 'SBER'
+                and sq.date <= %s
+            ORDER BY
+                sn.date
+            """
+        date_obj = datetime.strptime(date, '%d.%m.%Y')
+        query = sql.SQL(query)
+        self.cursor.execute(query, (date_obj,))
+        rows = self.cursor.fetchall()
+        data = pd.DataFrame(rows, columns=columns)
+        
+        data['date'] = pd.to_datetime(data['date'], format="%Y-%m-%d")
+        data['close_price'] = data['close_price'].astype(float)
+        data['price_change'] = data['price_change'].astype(float)
+        data['volume'] = data['volume'].astype(float)
+        data['real_score'] = data['real_score'].astype(float)
+
+        data.dropna(inplace=True)
+
+        df = data.copy()
+        
+        if(filter_flag == 1):
+            Q1 = df['price_change'].quantile(0.25)
+            Q3 = df['price_change'].quantile(0.75)
+
+            IQR = Q3 - Q1
+
+            lower_bound = Q1 - 1.5 * IQR
+            upper_bound = Q3 + 1.5 * IQR
+
+            df = df[(df['price_change'] >= lower_bound) & (df['price_change'] <= upper_bound)]
+
+            print("Размер данных до удаления выбросов:", data.shape)
+            print("Размер данных после удаления выбросов:", df.shape)
+        
+        return df
     
+    def get_data_for_predictions_with_limit(self, date, limit):
+        data = self.get_data_for_predictions(date, filter_flag=0)
+        limited_data = data.tail(limit+1)
+        return limited_data
+    
+    def save_model_to_database(self, model_date, ticker, model):
+        
+        serialized_model = pickle.dumps(model)
+
+        query = """
+            INSERT INTO stocks_app.models (model_date, ticker, model)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (model_date, ticker) DO UPDATE SET model = EXCLUDED.model
+        """
+
+        self.cursor.execute(query, (model_date, ticker, serialized_model))
+        self.conn.commit()
+
+        print("Модель успешно сохранена в базе данных.")
+    
+    def get_model_by_ticker_and_date(self, ticker):
+        query = """
+            SELECT *
+            FROM stocks_app.models
+            WHERE ticker = %s
+        """
+        self.cursor.execute(query, (ticker,))
+        model_data = self.cursor.fetchone()
+        
+        print(model_data)
+        if model_data:
+            model = pickle.loads(model_data[3])  
+            return model
+        else:
+            return None
+        
+    def check_model_in_database(self, ticker, date):
+        query = """
+            SELECT model_date
+            FROM stocks_app.models
+            WHERE ticker = %s
+        """
+        self.cursor.execute(query, (ticker,))
+        model_dates = self.cursor.fetchall()
+
+        # Convert date string to datetime object
+        date_obj = datetime.strptime(date, '%d.%m.%Y')
+
+        for model_date in model_dates:
+            model_date_datetime = datetime.combine(model_date[0], datetime.min.time())
+            delta = date_obj - model_date_datetime
+            if abs(delta.days) < 7:
+                return True  
+        return False  
+    
+    def save_scaler_to_database(self, ticker, scaler):
+        serialized_scaler = pickle.dumps(scaler)
+        query = """
+            INSERT INTO stocks_app.scalers (ticker, scaler_data)
+            VALUES (%s, %s)
+            ON CONFLICT (ticker) DO UPDATE SET scaler_data = EXCLUDED.scaler_data
+        """
+        self.cursor.execute(query, (ticker, serialized_scaler))
+        self.conn.commit()
+
+    def load_scaler_from_database(self, ticker):
+        query = """
+            SELECT scaler_data
+            FROM stocks_app.scalers
+            WHERE ticker = %s
+        """
+        self.cursor.execute(query, (ticker,))
+        scaler_data = self.cursor.fetchone()
+        if scaler_data:
+            scaler = pickle.loads(scaler_data[0])
+            return scaler
+        else:
+            return None
 
 if __name__ == "__main__":
     db = PostgreSQLbase(db_settings['dbname'], db_settings['user'], db_settings['password'], db_settings['host'])
     db.load_news_from_file('main_application/SBER_news_filtered.csv')
     
+

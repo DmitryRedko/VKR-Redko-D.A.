@@ -235,6 +235,38 @@ footer {
     background-color: #0056b3;
 }
 
+#tickerInfoSection table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+#tickerInfoSection th,
+#tickerInfoSection td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+#tickerInfoSection th {
+    background-color: #f2f2f2;
+}
+
+#tickerInfoSection button {
+    padding: 5px 10px;
+    cursor: pointer;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    transition: background-color 0.3s;
+}
+
+#tickerInfoSection button:hover {
+    background-color: #0056b3;
+}
+
+
 button {
     padding: 10px 20px;
     background-color:  #007bff;

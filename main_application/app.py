@@ -2,16 +2,29 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from datetime import datetime, timedelta
 from LeadsOfGrothAndFalls import LeadsOfGrowthAndFalls
 from PostgreSQLbase import PostgreSQLbase
+from NNModel import DataPreprocessor, StockPricePredictor
 from config import db_settings
 from datetime import datetime, timedelta
+import pandas as pd
 import json
+import locale
+import warnings
+warnings.filterwarnings("ignore")
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+import tensorflow as tf
+tf.get_logger().setLevel('ERROR')
+
+locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
 
 class App:
     def __init__(self):
         self.app = Flask(__name__)
         self.app.secret_key = 'da.gjlkdgj;oiw3u2m3r8[32m0r8m2398vn32b48nr[ymxhfp234m'
         self.db = PostgreSQLbase(db_settings['dbname'], db_settings['user'], db_settings['password'], db_settings['host'])
-        self.current_date = datetime(2020, 4, 10).strftime('%d.%m.%Y')
+        real_date =  datetime(2020, 4, 10)
+        self.current_date = real_date.strftime('%d.%m.%Y')
+        self.weekday = real_date.strftime('%A')
         self.current_user = ""
         self.flag_update = 0
         self.new_portfolio_json = ""
@@ -21,11 +34,14 @@ class App:
         self.app.add_url_rule('/login', 'login', self.login, methods=['GET', 'POST'])
         self.app.add_url_rule('/', 'home', self.home)
         self.app.add_url_rule('/portfolio', 'portfolio', self.portfolio, methods=['GET', 'POST'])
+        self.app.add_url_rule('/prediction', 'prediction', self.prediction, methods=['GET', 'POST'])
         self.app.add_url_rule('/logout', 'logout', self.logout)
         self.app.add_url_rule('/get_purchase_price', 'get_purchase_price', self.get_purchase_price)  
         self.app.add_url_rule('/get_sentiment', 'get_sentiment', self.get_sentiment)  
         self.app.add_url_rule('/get_current_date', 'get_current_date', self.get_current_date)  
         self.app.add_url_rule('/process_form_data', 'process_form_data', self.process_form_data, methods=['GET', 'POST'])  
+        self.app.add_url_rule('/get_chart_data', 'get_chart_data', self.get_chart_data, methods=['GET'])
+        self.app.add_url_rule('/get_chart_data_with_prediction', 'get_chart_data_with_prediction', self.get_chart_data_with_prediction, methods=['GET'])
 
     def login(self):
         if request.method == 'POST':
@@ -52,13 +68,14 @@ class App:
         
         last_news.sort(key=lambda x: datetime.strptime(x[1], '%Y-%m-%d'), reverse=True)
         
-        print(leaders_of_growth)
-        print(leaders_of_fall)
+        # print(leaders_of_growth)
+        # print(leaders_of_fall)
         
         return render_template('index.html', current_date=self.current_date, 
                                leaders_of_growth=leaders_of_growth,
                                leaders_of_fall=leaders_of_fall,
                                last_news=last_news,
+                                weekday = self.weekday,
                                user=self.current_user)
 
     def process_form_data(self):
@@ -252,6 +269,7 @@ class App:
                             user=self.current_user,
                             create_portfolio_status = create_portfolio_status,
                             current_date=self.current_date,
+                            weekday = self.weekday,
                             tickers=tickers,
                             portfolio_mass = portfolio_mass,
                             total_portfolio_value = total_portfolio_value,
@@ -259,12 +277,129 @@ class App:
                             graph_purchase_portfolio_data=list(reversed(graph_purchase_portfolio_data)),
                             graph_dynamic_portfolio_data=list(reversed(graph_dynamic_portfolio_data)))
 
+    def prediction(self):
+        if 'username' not in session or session['username'] != self.current_user:
+             redirect(url_for('login'))
+             
+        available_tickers = ""
+        try:
+            self.db.refresh_db()
+            available_tickers = self.db.get_unique_tickers()
+        except Exception as e:
+            print("Ошибка при получении доступных тикеров:", e)
+        
+        return render_template('prediction.html',
+                               available_tickers=available_tickers,
+                               current_date = self.current_date,
+                               weekday = self.weekday,
+                               user=self.current_user)
+    
+    def get_graph_data(self, ticker, range_dates_str, prediction = None):
+        range_dates =0
+        if(range_dates_str == 'week'):
+            range_dates =7
+        if(range_dates_str == 'month'):
+            range_dates =31
+        if(range_dates_str == 'half-year'):
+            range_dates =183
+        if(range_dates_str == 'year'):
+            range_dates =365
+        
+        temp_query = self.db.get_limit_prices_before_date_with_date(ticker, self.current_date, limit=range_dates)
+        ticker_mass = list(reversed([x[5] for x in temp_query])) 
+        dates_mass =  list(reversed([x[1] for x in temp_query]))   
+            
+        if prediction is not None:
+            ticker_mass += prediction
+            last_date = datetime.strptime(dates_mass[-1], '%Y-%m-%d')  
+            next_date = last_date + timedelta(days=1)
+
+            while next_date.weekday() >= 5: 
+                next_date += timedelta(days=1)
+
+            dates_mass.append(next_date.strftime('%Y-%m-%d'))
+            
+        news_sentiment = ""
+        purchase_price = ""
+            
+        if(ticker != ''):
+            news_sentiment = round(self.db.get_latest_news_before_date(ticker,self.current_date)[0][-1],2)
+            purchase_price = self.db.get_ticker_quotes_by_date(ticker,self.current_date)[5]
+            
+        print(ticker)
+        print(range_dates_str)
+        print(range_dates)
+        print(ticker_mass)
+        print(dates_mass)
+
+        chart_data = {
+            "ticker": ticker,
+            "labels": dates_mass,
+            "dataset": ticker_mass,
+            "newsSentiment": news_sentiment,
+            "currentPrice": purchase_price
+        }
+        return chart_data
+    
+    def check_model_status(self,ticker, date):
+        return self.db.check_model_in_database(ticker, date)
+    
+    def train_model(self, ticker):
+        df =  self.db.get_data_for_predictions(self.current_date)
+        data_scaler = DataPreprocessor(['date'])
+        
+        df = data_scaler.fit_transform(df[['date','close_price', 'volume', 'real_score']])   
+        
+        predictor = StockPricePredictor(prediction_days=20, custom_lr=0.001, EPOCHS=5, BATCH_SIZE=16, n_features=3)  
+        x_train, y_train = predictor.split_train_x_y(df,['close_price', 'volume', 'real_score'])
+        history = predictor.train(x_train, y_train)
+        data_scaler.save_scaler_to_database(ticker)
+        predictor.save_model(self.current_date, ticker)
+        
+    def get_chart_data_with_prediction(self):
+        ticker = request.args.get('ticker')
+        range_dates_str = request.args.get('range')
+
+        if self.check_model_status(ticker, self.current_date) == False:
+            return "Требуется обучить модель"
+
+        test_df = self.db.get_data_for_predictions_with_limit(self.current_date, 19)
+
+        # print(test_df)
+        
+        data_scaler = DataPreprocessor(['date'])
+        data_scaler.load_scaler_from_database(ticker)
+        test_df = data_scaler.transform(test_df[['date','close_price', 'volume', 'real_score']])
+        
+        predictor = StockPricePredictor(prediction_days=20, custom_lr=0.001, EPOCHS=5, BATCH_SIZE=16, n_features=3)  
+        x_test = predictor.split_test_x(test_df,['close_price', 'volume', 'real_score'])
+        predictor.load_model_from_base(ticker)
+        predicted_prices = predictor.predict(x_test)
+        
+        # prices_real = data_scaler.inverse_transform(pd.DataFrame(y_test,columns=['close_price', 'volume', 'real_score']))
+        predicted_prices = data_scaler.inverse_transform(pd.DataFrame(predicted_prices,columns=['close_price', 'volume', 'real_score']))
+
+        # print(list(predicted_prices['close_price']))
+        # print(prices_real)
+                
+        # rmse = predictor.evaluate(prices_real['close_price'], predicted_prices['close_price'])
+
+        # print(rmse)
+        
+        return self.get_graph_data(ticker, range_dates_str, prediction = list(predicted_prices['close_price']))
+    
+    def get_chart_data(self):
+        ticker = request.args.get('ticker')
+        range_dates_str = request.args.get('range')
+        # print("here")
+        return self.get_graph_data(ticker, range_dates_str)
+        
     def logout(self):
         session.pop('username', None)
         return redirect(url_for('home'))
 
     def run(self):
-        self.app.run(host='0.0.0.0', debug=True)
+        self.app.run(debug=True, port=5013)
 
 if __name__ == '__main__':
     app = App()

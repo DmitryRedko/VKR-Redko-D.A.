@@ -14,7 +14,7 @@
 
 <body>
     <header style="display: flex; justify-content: space-between; align-items: center;">
-        <h1 style="margin: auto;">{{ current_date }}</h1>
+        <h1 style="margin: auto;">{{ current_date }} - {{weekday}}</h1>
         <h1 style="margin: auto;">Пользователь: {{ user }}</h1>
     </header>
 
@@ -22,7 +22,7 @@
         <ul>
             <li><a href="{{ url_for('home') }}">Главная</a></li>
             <li><a href="{{ url_for('portfolio') }}">Портфель</a></li>
-            <li><a href="#">Прогноз</a></li>
+            <li><a href="{{ url_for('prediction') }}">Прогноз</a></li>
             <li><a href="{{ url_for('logout') }}">Выйти</a></li>
         </ul>
     </nav>

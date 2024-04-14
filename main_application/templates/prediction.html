@@ -1,0 +1,309 @@
+<!-- prediction.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Прогнозирование</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='icon.jpg') }}">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+
+<body>
+    <header style="display: flex; justify-content: space-between; align-items: center;">
+        <h1 style="margin: auto;">{{ current_date }} - {{weekday}}</h1>
+        <h1 style="margin: auto;">Пользователь: {{ user }}</h1>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="{{ url_for('home') }}">Главная</a></li>
+            <li><a href="{{ url_for('portfolio') }}">Портфель</a></li>
+            <li><a href="{{ url_for('prediction') }}">Прогноз</a></li>
+            <li><a href="{{ url_for('logout') }}">Выйти</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section>
+            <h2>Прогнозирование</h2>
+            <label for="ticker">Выберите тикер:</label>
+            <select name="ticker" id="ticker" onchange="updateChart()" required>
+                <option value="" disabled selected hidden>Выберите тикер</option>
+                {% for ticker in available_tickers %}
+                <option value="{{ ticker }}">{{ ticker }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="range">Выберите диапазон времени:</label>
+            <select name="range" id="range" onchange="updateChart()">
+                <option value="week">Неделя</option>
+                <option value="month">Месяц</option>
+                <option value="half-year">Полгода</option>
+                <option value="year">Год</option>
+            </select>
+        </section>
+
+        <section id="tickerInfoSection" style="display: none;">
+            <h2>Информация о тикере</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Тикер</th>
+                        <th>Текущий новостной фон</th>
+                        <th>Текущая цена актива</th>
+                        <th>Прогнозная цена</th>
+                    </tr>
+                </thead>
+                <tbody id="tickerInfo">
+
+                </tbody>
+            </table>
+        </section>
+            
+        <section id="chartSection" style="display: none;">
+            <h2>Динамика</h2>
+            <canvas id="myChart" width="200" height="50"></canvas>
+            <button onclick="makePrediction()">Сделать прогноз на следующий день</button>
+        </section>
+        
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+
+    var myChart;
+
+    function hideSections() {
+        document.getElementById('tickerInfoSection').style.display = 'none';
+        document.getElementById('chartSection').style.display = 'none';
+    }
+    
+    window.onload = function() {
+        hideSections(); // Вызывается при загрузке страницы для скрытия секций
+    };
+
+
+    function updateChart() {
+    console.log("Updating chart");
+    var ticker = document.getElementById('ticker').value;
+    var range = document.getElementById('range').value;
+
+    // Проверяем, выбран ли тикер
+    if (ticker) {
+        // Обновление данных о тикере в таблице
+        document.getElementById('tickerInfo').innerHTML = `
+            <tr>
+                <td>${ticker}</td>
+                <td>Loading...</td>
+                <td>Loading...</td>
+                <td>Loading...</td>
+            </tr>
+        `;
+
+        var chartCanvas = document.getElementById('myChart');
+
+        axios.get('/get_chart_data', {
+            params: {
+                ticker: ticker,
+                range: range
+            }
+        })
+        .then(function (response) {
+            var chartData = response.data;
+            console.log(chartData);
+            
+            var color = ''
+            if(chartData.newsSentiment < 0 ){
+                color = 'red'
+            } else if (chartData.newsSentiment > 0 ){
+                color = 'green'
+            }
+
+            var coloredRow = '<td style=\"color: ' + color + '\">' 
+
+            console.log(coloredRow);
+
+            document.getElementById('tickerInfo').innerHTML = `
+                <tr>
+                    <td>${ticker}</td>
+                    ${coloredRow}${chartData.newsSentiment}</td>
+                    <td>${chartData.currentPrice}</td>
+                    <td> </td> 
+                </tr>
+            `;
+
+            var ctx = document.getElementById('myChart').getContext('2d');
+
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        label: chartData.ticker,
+                        data: chartData.dataset,
+                        borderColor: 'rgba(54, 162, 235, 1)', 
+                        borderWidth: 1,
+                        fill: false,
+                        pointBackgroundColor: 'rgba(54, 162, 235, 1)', 
+                        pointBorderColor: 'rgba(54, 162, 235, 1)',
+                        pointRadius: 3
+                    }]
+                },
+                options: {
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero: true
+                            }
+                        }]
+                    }
+                }
+            });
+        })
+        .catch(function (error) {
+            console.log(error);
+        });
+
+        document.getElementById('tickerInfoSection').style.display = 'block';
+        document.getElementById('chartSection').style.display = 'block';
+    }
+}
+
+      
+      function makePrediction() {
+        console.log("Making prediction");
+        var ticker = document.getElementById('ticker').value;
+        var range = document.getElementById('range').value;
+    
+        axios.get('/get_chart_data_with_prediction', {
+            params: {
+                ticker: ticker,
+                range: range
+            }
+        })
+        .then(function (response) {
+            var chartData = response.data;
+            console.log(chartData);
+
+            // Обновление прогнозной цены в таблице
+            var lastDataIndex = chartData.dataset.length - 1;
+            document.getElementById('tickerInfo').innerHTML = `
+                <tr>
+                    <td>${ticker}</td>
+                    <td>${chartData.newsSentiment}</td>
+                    <td>${chartData.currentPrice}</td>
+                    <td>${chartData.dataset[lastDataIndex].toFixed(2)}</td>
+                </tr>
+            `;
+
+            var ctx = document.getElementById('myChart').getContext('2d');
+
+            if (myChart) {
+                myChart.destroy();
+            }
+    
+            // Обновление последней точки в массиве данных
+            var lastDataIndex = chartData.dataset.length - 1;
+            console.log(lastDataIndex);
+            console.log(chartData.labels[lastDataIndex]);
+            console.log(chartData.dataset[lastDataIndex]);
+            
+                
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        label: chartData.ticker,
+                        data: chartData.dataset,
+                        borderColor: chartData.dataset.map((data, index) => index === chartData.dataset.length - 1 ? 'rgba(255, 0, 0, 1)' : 'rgba(54, 162, 235, 1)'),
+                        borderWidth: chartData.dataset.map((data, index) => index === chartData.dataset.length - 1 ? 2 : 1),
+                        fill: false,
+                        pointBackgroundColor: chartData.dataset.map((data, index) => index === chartData.dataset.length - 1 ? 'rgba(255, 0, 0, 1)' : 'rgba(54, 162, 235, 1)'),
+                        // Установка красного цвета для последней точки и стандартного цвета для остальных
+                        pointBorderColor: chartData.dataset.map((data, index) => index === chartData.dataset.length - 1 ? 'rgba(255, 0, 0, 1)' : 'rgba(54, 162, 235, 1)'),
+                        // Установка красного цвета для границы последней точки и стандартного цвета для остальных
+                        pointRadius: chartData.dataset.map((data, index) => index === chartData.dataset.length - 1 ? 6 : 3),
+                    }]
+                },
+                options: {
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero: true
+                            }
+                        }]
+                    }
+                }
+            });
+        })
+        .catch(function (error) {
+            console.log(error);
+        });
+
+        document.getElementById('tickerInfoSection').style.display = 'block';
+        document.getElementById('chartSection').style.display = 'block';
+
+        }
+    
+        function updateTickerInfo() {
+            var ticker = document.getElementById('ticker').value;
+    
+            axios.get('/get_ticker_info', {
+                params: {
+                    ticker: ticker
+                }
+            })
+            .then(function (response) {
+                var tickerInfo = response.data;
+                console.log(tickerInfo);
+    
+                var tbody = document.getElementById('tickerInfo');
+    
+                tbody.innerHTML = '';
+    
+                var newRow = document.createElement('tr');
+    
+                var tickerCell = document.createElement('td');
+                tickerCell.textContent = tickerInfo.ticker;
+                newRow.appendChild(tickerCell);
+    
+                var newsCell = document.createElement('td');
+                newsCell.textContent = tickerInfo.news;
+                newRow.appendChild(newsCell);
+    
+                var currentPriceCell = document.createElement('td');
+                currentPriceCell.textContent = tickerInfo.currentPrice;
+                newRow.appendChild(currentPriceCell);
+    
+                var predictedPriceCell = document.createElement('td');
+                predictedPriceCell.textContent = tickerInfo.predictedPrice;
+                newRow.appendChild(predictedPriceCell);
+    
+                tbody.appendChild(newRow);
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+        }
+    
+        function hideSections() {
+            document.getElementById('tickerInfoSection').style.display = 'none';
+            document.getElementById('chartSection').style.display = 'none';
+        }
+        
+
+    </script>
+
+</body>
+
+</html>
